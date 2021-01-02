@@ -4,6 +4,8 @@
 
 #include <iostream>
 #include <Windows.h>
+#include <vector>
+#include <algorithm>
 #include <chrono>
 
 using namespace std;
@@ -11,8 +13,10 @@ using namespace std;
 int screenWidth = 120;
 int screenHeight = 40;
 
-float playerX = 8.0f;
-float playerY = 8.0f;
+float speed = 5;
+float sensitivity = 3;
+float playerX = 1.0f;
+float playerY = 1.0f;
 float playerLookAngle = 0.0f;
 float FOV = 3.14159f / 4.0f;
 float viewDistance = 16;
@@ -32,18 +36,18 @@ int main()
     wstring map;
 
     map += L"################";
+    map += L"#..............#";
+    map += L"#..............#";
+    map += L"#..............#";
+    map += L"#..............#";
+    map += L"#.......##.....#";
+    map += L"#..............#";
+    map += L"#..............#";
+    map += L"######.........#";
+    map += L"#..............#";
+    map += L"#..............#";
+    map += L"#..............#";
     map += L"#......##......#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#.......#......#";
-    map += L"#..............#";
-    map += L"#.......#......#";
-    map += L"#..............#";
-    map += L"#..............#";
     map += L"#..............#";
     map += L"#..............#";
     map += L"################";
@@ -61,44 +65,46 @@ int main()
         
         //movement component
         if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
-            playerLookAngle -= 0.5 * deltaTime;
+            playerLookAngle -= sensitivity * deltaTime;
 
         if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
-            playerLookAngle += 0.5 * deltaTime;
+            playerLookAngle += sensitivity * deltaTime;
 
       
         if (GetAsyncKeyState((unsigned short)'W') & 0x8000)
         {
-            playerX += sinf(playerLookAngle) * 0.5 * deltaTime;
-            playerY += cosf(playerLookAngle) * 0.5 * deltaTime;
+            playerX += sinf(playerLookAngle) * speed * deltaTime;
+            playerY += cosf(playerLookAngle) * speed * deltaTime;
 
-            //collision detection 
-            if (map[playerY * mapWidth + playerX] == '#')
+            if (map[(int)playerY * mapWidth + (int)playerX] == '#')     //collision detection 
             {
-                playerX -= sinf(playerLookAngle) * 0.5 * deltaTime;
-                playerY -= cosf(playerLookAngle) * 0.5 * deltaTime;
+                playerX -= sinf(playerLookAngle) * speed * deltaTime;
+                playerY -= cosf(playerLookAngle) * speed * deltaTime;
             }
         }
 
         if (GetAsyncKeyState((unsigned short)'S') & 0x8000)
         {
-            playerX -= sinf(playerLookAngle) * 0.5 * deltaTime;
-            playerY -= cosf(playerLookAngle) * 0.5 * deltaTime;
+            playerX -= sinf(playerLookAngle) * speed * deltaTime;
+            playerY -= cosf(playerLookAngle) * speed * deltaTime;
 
-            if (map[playerY * mapWidth + playerX] == '#')
+            if (map[(int)playerY * mapWidth + (int)playerX] == '#')   //collision detection 
             {
-                playerX += sinf(playerLookAngle) * 0.5 * deltaTime;
-                playerY += cosf(playerLookAngle) * 0.5 * deltaTime;
+                playerX += sinf(playerLookAngle) * speed * deltaTime;
+                playerY += cosf(playerLookAngle) * speed * deltaTime;
             }
         }
 
-        for (int x = 0; x < screenWidth; x++) //doing the computation to each column
+        for (int x = 0; x < screenWidth; x++) // computation to each column
         {
             float rayAngle = (playerLookAngle - FOV / 2.0f)
                 + ((float)x / (float)screenWidth) * FOV;
 
             float distanceToWall = 0.0f;
-            bool wallHitted = false;
+
+            bool wallHitted = false,
+                 boundary = false;
+            
 
             float eyeX = sinf(rayAngle);
             float eyeY = cosf(rayAngle);
@@ -122,6 +128,30 @@ int main()
                     if (map[testY * mapWidth + testX] == '#')
                     {
                         wallHitted = true;
+
+                        vector<pair<float, float>> p;
+                        for (int tx = 0; tx < 2; tx++)
+                        {
+                            for (int ty = 0; ty < 2; ty++)
+                            {
+                                float vy = (float)testY + ty - playerY;
+                                float vx = (float)testX + tx - playerX;
+
+                                float d = sqrt(vx * vx + vy * vy);
+                                float dot = (eyeX * vx / d) + (eyeY * vy / d);
+                                
+                                p.push_back(make_pair(d, dot));
+                            }
+                        }
+
+                        sort(p.begin(), p.end(), [](const pair<float, float>& a, const pair<float, float>& b)
+                                                    {
+                                                        return a.first < b.first;
+                                                    });
+                         float bound = 0.01;
+                         if (acos(p.at(0).second) < bound ||
+                             acos(p.at(1).second) < bound )
+                             boundary = true;
                     }
                 }
             }
@@ -140,11 +170,13 @@ int main()
                     screen[y * screenWidth + x] = ' '; //draw sky
                 else if (y > ceiling && y < floor)
                 {
-                    if (distanceToWall <= viewDistance / 4.0f)	        shade = 0x2588;	// Very close	
+                    if (boundary)                                       shade = ' ';
+                    else if (distanceToWall <= viewDistance / 4.0f)	    shade = 0x2588;	// Very close	
                     else if (distanceToWall < viewDistance / 3.0f)		shade = 0x2593;
                     else if (distanceToWall < viewDistance / 2.0f)		shade = 0x2592;
                     else if (distanceToWall < viewDistance)				shade = 0x2591;
                     else											    shade = ' ';		// Too far away
+
 
                     screen[y * screenWidth + x] = shade; // draw wall
 
@@ -165,6 +197,20 @@ int main()
             }
 
         }
+
+        //some info
+        swprintf_s(screen, 40, L"X=%3.2f , Y=%3.2f, A=%3.2f", playerX, playerY, playerLookAngle);
+
+        //map
+        for (int tx = 0; tx < mapWidth; tx++)
+        {
+            for (int ty = 0; ty < mapHeight; ty++)
+            {
+                screen[(ty+1)*screenWidth + tx] = map[ty * mapWidth + tx];
+            }
+        }
+
+        screen[((int)playerY +1) *  screenWidth + (int)playerX] = 'P';
 
         screen[screenWidth * screenHeight - 1] = '\0';
         WriteConsoleOutputCharacter(hConsoleBuff, screen, screenWidth * screenHeight, { 0,0 }, &dwBytesWritten);
