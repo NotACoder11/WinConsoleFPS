@@ -64,10 +64,11 @@ int main()
         
         
         //movement component
-        if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
+        //camera 
+        if (GetAsyncKeyState((unsigned short)'Q') & 0x8000)
             playerLookAngle -= sensitivity * deltaTime;
 
-        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
+        if (GetAsyncKeyState((unsigned short)'E') & 0x8000)
             playerLookAngle += sensitivity * deltaTime;
 
       
@@ -80,6 +81,30 @@ int main()
             {
                 playerX -= sinf(playerLookAngle) * speed * deltaTime;
                 playerY -= cosf(playerLookAngle) * speed * deltaTime;
+            }
+        }
+
+        if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
+        {
+            playerX -= cosf(playerLookAngle) * speed * deltaTime;
+            playerY -= sinf(playerLookAngle) * speed * deltaTime;
+
+            if (map[(int)playerY * mapWidth + (int)playerX] == '#')   //collision detection 
+            {
+                playerX += cosf(playerLookAngle) * speed * deltaTime;
+                playerY += sinf(playerLookAngle) * speed * deltaTime;
+            }
+        }
+
+        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
+        {
+            playerX += cosf(playerLookAngle) * speed * deltaTime;
+            playerY += sinf(playerLookAngle) * speed * deltaTime;
+
+            if (map[(int)playerY * mapWidth + (int)playerX] == '#')   //collision detection 
+            {
+                playerX -= cosf(playerLookAngle) * speed * deltaTime;
+                playerY -= sinf(playerLookAngle) * speed * deltaTime;
             }
         }
 
