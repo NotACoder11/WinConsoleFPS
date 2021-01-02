@@ -7,11 +7,14 @@
 #include <vector>
 #include <algorithm>
 #include <chrono>
-
 using namespace std;
 
-int screenWidth = 120;
+int screenWidth = 160;
 int screenHeight = 40;
+
+int renderScreenWidth = 119; //screen width - mapwidth -1(to create frame)
+
+
 
 float speed = 5;
 float sensitivity = 3;
@@ -21,42 +24,95 @@ float playerLookAngle = 0.0f;
 float FOV = 3.14159f / 4.0f;
 float viewDistance = 16;
 
-int mapWidth = 16;
-int mapHeight = 16;
+
+
+
+class Map
+{
+public:
+
+    Map()
+    {
+       map += L"#######################################";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#.....................................#";
+       map += L"#######################################";
+
+    }
+
+    wchar_t& operator[](const int& index)
+    {
+        return map[index];
+    }
+
+    int width = 39;
+    int height = 39;
+
+    wstring map;
+
+    wchar_t wallChar = '#';
+    wchar_t frame = ' ';
+};
+
+class Enemy
+{
+ //TODO do something
+};
 
 int main()
 {
+    Map map;
     // creating a screen buffer 
     wchar_t* screen = new wchar_t[screenWidth * screenHeight];
     HANDLE hConsoleBuff = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, 0, CONSOLE_TEXTMODE_BUFFER, 0);
     SetConsoleActiveScreenBuffer(hConsoleBuff);
     DWORD dwBytesWritten = 0;
 
-    //creating map
-    wstring map;
+    COORD bufferSize = { screenWidth, screenHeight };
+    SetConsoleScreenBufferSize(hConsoleBuff, bufferSize);
 
-    map += L"################";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#.......##.....#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"######.........#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"#......##......#";
-    map += L"#..............#";
-    map += L"#..............#";
-    map += L"################";
 
     auto tp1 = chrono::system_clock::now();
     auto tp2 = chrono::system_clock::now();
 
     while (true) // main game loop
     {
+        //game timer
         tp2 = chrono::system_clock::now();
         chrono::duration<float> elapsedTime = tp2 - tp1;
         tp1 = tp2;
@@ -64,6 +120,7 @@ int main()
         
         
         //movement component
+
         //camera 
         if (GetAsyncKeyState((unsigned short)'Q') & 0x8000)
             playerLookAngle -= sensitivity * deltaTime;
@@ -71,13 +128,13 @@ int main()
         if (GetAsyncKeyState((unsigned short)'E') & 0x8000)
             playerLookAngle += sensitivity * deltaTime;
 
-      
+        //walking
         if (GetAsyncKeyState((unsigned short)'W') & 0x8000)
         {
             playerX += sinf(playerLookAngle) * speed * deltaTime;
             playerY += cosf(playerLookAngle) * speed * deltaTime;
 
-            if (map[(int)playerY * mapWidth + (int)playerX] == '#')     //collision detection 
+            if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)     //collision detection 
             {
                 playerX -= sinf(playerLookAngle) * speed * deltaTime;
                 playerY -= cosf(playerLookAngle) * speed * deltaTime;
@@ -89,22 +146,10 @@ int main()
             playerX -= cosf(playerLookAngle) * speed * deltaTime;
             playerY -= sinf(playerLookAngle) * speed * deltaTime;
 
-            if (map[(int)playerY * mapWidth + (int)playerX] == '#')   //collision detection 
+            if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)   //collision detection 
             {
                 playerX += cosf(playerLookAngle) * speed * deltaTime;
                 playerY += sinf(playerLookAngle) * speed * deltaTime;
-            }
-        }
-
-        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
-        {
-            playerX += cosf(playerLookAngle) * speed * deltaTime;
-            playerY += sinf(playerLookAngle) * speed * deltaTime;
-
-            if (map[(int)playerY * mapWidth + (int)playerX] == '#')   //collision detection 
-            {
-                playerX -= cosf(playerLookAngle) * speed * deltaTime;
-                playerY -= sinf(playerLookAngle) * speed * deltaTime;
             }
         }
 
@@ -113,17 +158,29 @@ int main()
             playerX -= sinf(playerLookAngle) * speed * deltaTime;
             playerY -= cosf(playerLookAngle) * speed * deltaTime;
 
-            if (map[(int)playerY * mapWidth + (int)playerX] == '#')   //collision detection 
+            if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)   //collision detection 
             {
                 playerX += sinf(playerLookAngle) * speed * deltaTime;
                 playerY += cosf(playerLookAngle) * speed * deltaTime;
             }
         }
 
-        for (int x = 0; x < screenWidth; x++) // computation to each column
+        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
+        {
+            playerX += cosf(playerLookAngle) * speed * deltaTime;
+            playerY += sinf(playerLookAngle) * speed * deltaTime;
+
+            if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)   //collision detection 
+            {
+                playerX -= cosf(playerLookAngle) * speed * deltaTime;
+                playerY -= sinf(playerLookAngle) * speed * deltaTime;
+            }
+        }// movement end.
+
+        for (int x = 0; x < renderScreenWidth; x++) // computation to each column
         {
             float rayAngle = (playerLookAngle - FOV / 2.0f)
-                + ((float)x / (float)screenWidth) * FOV;
+                + ((float)x / (float)renderScreenWidth) * FOV;
 
             float distanceToWall = 0.0f;
 
@@ -142,15 +199,15 @@ int main()
                 int testX = (int)(playerX + eyeX * distanceToWall);
                 int testY = (int)(playerY + eyeY * distanceToWall);
 
-                if (testX < 0 || testX >= mapWidth || //test if out of bounce 
-                    testY < 0 || testY >= mapHeight)
+                if (testX < 0 || testX >= map.width || //test if out of bounce 
+                    testY < 0 || testY >= map.height)
                 {
                     wallHitted = true;
                     distanceToWall = viewDistance;
                 }
                 else
                 {
-                    if (map[testY * mapWidth + testX] == '#')
+                    if (map[testY * map.width + testX] == map.wallChar)
                     {
                         wallHitted = true;
 
@@ -173,7 +230,7 @@ int main()
                                                     {
                                                         return a.first < b.first;
                                                     });
-                         float bound = 0.01;
+                         float bound = 0.01f;
                          if (acos(p.at(0).second) < bound ||
                              acos(p.at(1).second) < bound )
                              boundary = true;
@@ -223,19 +280,22 @@ int main()
 
         }
 
-        //some info
+        //player info output
         swprintf_s(screen, 40, L"X=%3.2f , Y=%3.2f, A=%3.2f", playerX, playerY, playerLookAngle);
 
         //map
-        for (int tx = 0; tx < mapWidth; tx++)
+        for (int tx = -1; tx < map.width; tx++)
         {
-            for (int ty = 0; ty < mapHeight; ty++)
+            for (int ty = 0; ty < map.height; ty++)
             {
-                screen[(ty+1)*screenWidth + tx] = map[ty * mapWidth + tx];
+                if (tx < 0)
+                    screen[(ty + 1) * screenWidth + tx + 120] = map.frame;
+                else
+                    screen[(ty+1)*screenWidth + tx + 120] = map[ty * map.width + tx];
             }
         }
 
-        screen[((int)playerY +1) *  screenWidth + (int)playerX] = 'P';
+        screen[((int)playerY +1) *  screenWidth + (int)playerX + 120] = 'P';
 
         screen[screenWidth * screenHeight - 1] = '\0';
         WriteConsoleOutputCharacter(hConsoleBuff, screen, screenWidth * screenHeight, { 0,0 }, &dwBytesWritten);
