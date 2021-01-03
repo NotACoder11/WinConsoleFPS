@@ -21,7 +21,7 @@ float sensitivity = 3;
 float playerX = 1.0f;
 float playerY = 1.0f;
 float playerLookAngle = 0.0f;
-float FOV = 3.14159f / 4.0f;
+float FOV = 1.5;
 float viewDistance = 16;
 
 
@@ -79,7 +79,45 @@ public:
        map += L"#.#.##.#.#..#...#########.#.#.####.#.##";
        map += L"#........#....#...........#........#...";
        map += L"#######################################";
-
+        //map += L"#######################################";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.........################............#";
+        //map += L"#.........#...........................#";
+        //map += L"#.........#...........................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#.....................................#";
+        //map += L"#######################################";
 
     }
 
@@ -114,13 +152,18 @@ public:
     int additionalX = -1;
     int additionalY = -1;
 
+    int lastSpottedX = -1;
+    int lastSpottedY = -1;
+
     Map& map;
 
     chrono::system_clock::time_point lastMovement;
 
 
-    void move()
+    void move() //TODO test n fix some AI bugs
     {
+        look();
+
        auto now = chrono::system_clock::now();
        auto elapsed = chrono::duration_cast<chrono::seconds>(now - lastMovement);
 
@@ -128,72 +171,164 @@ public:
        {
            if (inMovement) // then finish movement
            {
-               X = additionalX; 
-               Y = additionalY;
-               
-               additionalX = -1;
-               additionalY = -1;
+                X = additionalX;  
+                Y = additionalY;
+                additionalX = -1;
+                additionalY = -1;
 
-               inMovement = false;
-               lastMovement = now;
+                inMovement = false;
+                lastMovement = now;
            }
            else
            {
-               //choose random availible direction to move
-               switch (rand(1,4))
+               if(lastSpottedX == -1 || lastSpottedY == -1) // if player wasn't spotted
                {
-               case 1:   // forward
-                   if (map[(Y+1) * map.width + X] != map.wallChar) //check for wall
+                   //choose random availible direction to move
+                   switch (rand(1, 4))
                    {
-                       inMovement = true;
-                       lastMovement = now;
+                   case 1:   // forward
+                       if (map[(Y + 1) * map.width + X] != map.wallChar) //check for wall
+                       {
+                           inMovement = true;
+                           lastMovement = now;
 
-                       additionalX = X;
-                       additionalY = Y+1;
+                           additionalX = X;
+                           additionalY = Y + 1;
 
+                       }
+                       break;
+
+                   case 2:   // left
+                       if (map[Y * map.width + X - 1] != map.wallChar) //check for wall
+                       {
+                           inMovement = true;
+                           lastMovement = now;
+
+                           additionalX = X - 1;
+                           additionalY = Y;
+                       }
+                       break;
+                   case 3:   // right
+                       if (map[Y * map.width + X + 1] != map.wallChar) //check for wall
+                       {
+                           inMovement = true;
+                           lastMovement = now;
+
+                           additionalX = X + 1;
+                           additionalY = Y;
+                       }
+                       break;
+                   case 4:   // backward 
+                       if (map[(Y - 1) * map.width + X] != map.wallChar) //check for wall
+                       {
+                           inMovement = true;
+                           lastMovement = now;
+
+                           additionalX = X;
+                           additionalY = Y - 1;
+                       }
+                       break;
                    }
-                   break;
-
-               case 2:   // left
-                   if (map[Y * map.width + X-1] != map.wallChar) //check for wall
-                   {
-                       inMovement = true;
-                       lastMovement = now;
-
-                       additionalX = X-1;
-                       additionalY = Y;
-                   }
-                   break;
-               case 3:   // right
-                   if (map[Y * map.width + X+1] != map.wallChar) //check for wall
-                   {
-                       inMovement = true;
-                       lastMovement = now;
-
-                       additionalX = X+1;
-                       additionalY = Y;
-                   }
-                   break;
-               case 4:   // backward 
-                   if (map[(Y-1) * map.width + X] != map.wallChar) //check for wall
-                   {
-                       inMovement = true;
-                       lastMovement = now;
-
-                       additionalX = X;
-                       additionalY = Y-1;
-                   }
-                   break;
                }
+               else
+               {
+                   if (Y == lastSpottedY)
+                   {
+                       auto sign = X > lastSpottedX ? -1 : 1;
+                       if (map[Y * map.width + X + 1 *sign] != map.wallChar) //check for wall
+                       {
+                           inMovement = true;
+                           lastMovement = now;
 
+                           additionalX = X + 1 * sign;
+                           additionalY = Y;
+                       }
+                   }
+                   else if (X == lastSpottedX)
+                   {
+                       auto sign = Y > lastSpottedY ? -1 : 1;
+                       if (map[(Y + 1 * sign) * map.width + X] != map.wallChar) //check for wall //bluat
+                       {
+                           inMovement = true;
+                           lastMovement = now;
+
+                           additionalX = X ;
+                           additionalY = Y + 1 * sign;
+                       }
+                   }
+               }
+           }
+
+           if (X == lastSpottedX && Y == lastSpottedY)
+           {
+               lastSpottedX = -1;
+               lastSpottedY = -1;
            }
 
        }
     }
 
-    //TODO AI
-    //should move to player if can see him
-    //should remember last position where player was spotted and move threr
+    void look()
+    {
+        
+        int testY, testX;
+
+        for (testX = X, testY = Y; map[(testY + 1) * map.width + testX] != map.wallChar; testY++ ) //forward 
+        {
+            if (spot(testX, testY)) return;
+        }
+
+        for (testX = X, testY = Y; map[(testY + 1) * map.width + testX] != map.wallChar; testY--) //backward 
+        {
+            if (spot(testX, testY)) return;
+        }
+
+        for (testX = X, testY = Y; map[testY * map.width + testX ] != map.wallChar; testX--) //left
+        {
+            if (spot(testX, testY)) return;
+        }
+
+        for (testX = X, testY = Y; map[testY * map.width + testX] != map.wallChar; testX++) //right
+        {
+            if (spot(testX, testY)) return;
+        }
+        
+        if (inMovement) //chek for additional body
+        {
+            for (testX = additionalX, testY = additionalY; map[(testY + 1) * map.width + testX] != map.wallChar; testY++) //forward 
+            {
+                if (spot(testX, testY)) return;
+            }
+
+            for (testX = additionalX, testY = additionalY; map[(testY + 1) * map.width + testX] != map.wallChar; testY--) //backward 
+            {
+                if (spot(testX, testY)) return;
+            }
+
+            for (testX = additionalX, testY = additionalY; map[testY * map.width + testX] != map.wallChar; testX--) //left
+            {
+                if (spot(testX, testY)) return;
+            }
+
+            for (testX = additionalX, testY = additionalY; map[testY * map.width + testX] != map.wallChar; testX++) //right
+            {
+                if (spot(testX, testY)) return;
+            }
+        }
+
+    }
+    
+    bool spot(int X, int Y)
+    {
+        if (((int)playerY + 1) * screenWidth + (int)playerX == (Y + 1) * screenWidth + X)
+        {
+            lastSpottedX = X;
+            lastSpottedY = Y;
+
+            return true;
+        } 
+        return false;
+    }
 };
 
 enum class HITTYPE
@@ -435,7 +570,7 @@ int main()
         screen[((int)playerY +1) *  screenWidth + (int)playerX + 120] = 'P';
         screen[((int)monster.Y + 1) * screenWidth + (int)monster.X + 120] = map.enemyChar;
        // if(monster.inMovement)
-            screen[((int)monster.additionalY + 1) * screenWidth + (int)monster.additionalX + 120] = map.enemyChar;
+        screen[((int)monster.additionalY + 1) * screenWidth + (int)monster.additionalX + 120] = map.enemyChar;
 
 
         screen[screenWidth * screenHeight - 1] = '\0';
