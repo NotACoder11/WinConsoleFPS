@@ -14,7 +14,7 @@ using namespace std;
 int screenWidth = 160;
 int screenHeight = 40;
 
-int renderScreenWidth = 119; //screen width - mapwidth -1(to create frame)
+int renderScreenWidth = 119; //screen width - mapwidth -1(to create emply line before map)
 
 float speed = 5;
 float sensitivity = 3;
@@ -80,6 +80,7 @@ public:
        map += L"#........#....#...........#........#...";
        map += L"#######################################";
 
+
     }
 
     wchar_t& operator[](const int& index)
@@ -100,18 +101,99 @@ public:
 class Enemy
 {
 public:
-    Enemy()
+    Enemy(Map& m) : map(m)
     {
-
+        lastMovement = chrono::system_clock::now();
     }
 
-    float X = 3;
-    float Y = 3;
-    float speed = 0;
+    int X = 3;
+    int Y = 3;
+    int speed = 1; //in seconds
 
-    //TODO movement
+    bool inMovement = false;
+    int additionalX = -1;
+    int additionalY = -1;
+
+    Map& map;
+
+    chrono::system_clock::time_point lastMovement;
+
+
+    void move()
+    {
+       auto now = chrono::system_clock::now();
+       auto elapsed = chrono::duration_cast<chrono::seconds>(now - lastMovement);
+
+       if (elapsed.count() >= speed)
+       {
+           if (inMovement) // then finish movement
+           {
+               X = additionalX; 
+               Y = additionalY;
+               
+               additionalX = -1;
+               additionalY = -1;
+
+               inMovement = false;
+               lastMovement = now;
+           }
+           else
+           {
+               //choose random availible direction to move
+               switch (rand(1,4))
+               {
+               case 1:   // forward
+                   if (map[(Y+1) * map.width + X] != map.wallChar) //check for wall
+                   {
+                       inMovement = true;
+                       lastMovement = now;
+
+                       additionalX = X;
+                       additionalY = Y+1;
+
+                   }
+                   break;
+
+               case 2:   // left
+                   if (map[Y * map.width + X-1] != map.wallChar) //check for wall
+                   {
+                       inMovement = true;
+                       lastMovement = now;
+
+                       additionalX = X-1;
+                       additionalY = Y;
+                   }
+                   break;
+               case 3:   // right
+                   if (map[Y * map.width + X+1] != map.wallChar) //check for wall
+                   {
+                       inMovement = true;
+                       lastMovement = now;
+
+                       additionalX = X+1;
+                       additionalY = Y;
+                   }
+                   break;
+               case 4:   // backward 
+                   if (map[(Y-1) * map.width + X] != map.wallChar) //check for wall
+                   {
+                       inMovement = true;
+                       lastMovement = now;
+
+                       additionalX = X;
+                       additionalY = Y-1;
+                   }
+                   break;
+               }
+
+           }
+
+       }
+    }
+
     //TODO AI
-    
+    //should move to player if can see him
+    //should remember last position where player was spotted and move threr
 };
 
 enum class HITTYPE
@@ -134,7 +216,7 @@ int main()
     auto tp2 = chrono::system_clock::now();
 
     Map map;
-    Enemy monster;
+    Enemy monster(map);
 
     while (true) // main game loop
     {
@@ -193,7 +275,7 @@ int main()
 
         if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
         {
-            playerX += cosf(playerLookAngle) * speed * deltaTime;
+           playerX += cosf(playerLookAngle) * speed * deltaTime;
             playerY += sinf(playerLookAngle) * speed * deltaTime;
 
             if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)   //collision detection 
@@ -201,7 +283,10 @@ int main()
                 playerX -= cosf(playerLookAngle) * speed * deltaTime;
                 playerY -= sinf(playerLookAngle) * speed * deltaTime;
             }
-        }// movement end.
+        }
+        
+        monster.move();
+        // movement end.
 
         for (int x = 0; x < renderScreenWidth; x++) // computation to each column
         {
@@ -265,7 +350,8 @@ int main()
                              boundary = true;
                     }
 
-                    if (testY == monster.Y && testX == monster.X) //enemyRender
+                    if (testY == monster.Y && testX == monster.X ||
+                        testY == monster.additionalY && testX == monster.additionalX) //enemyRender
                     {
                         anyHitted = true;
                         hit = HITTYPE::HIT_ENEMY;
@@ -348,6 +434,9 @@ int main()
 
         screen[((int)playerY +1) *  screenWidth + (int)playerX + 120] = 'P';
         screen[((int)monster.Y + 1) * screenWidth + (int)monster.X + 120] = map.enemyChar;
+       // if(monster.inMovement)
+            screen[((int)monster.additionalY + 1) * screenWidth + (int)monster.additionalX + 120] = map.enemyChar;
+
 
         screen[screenWidth * screenHeight - 1] = '\0';
         WriteConsoleOutputCharacter(hConsoleBuff, screen, screenWidth * screenHeight, { 0,0 }, &dwBytesWritten);
