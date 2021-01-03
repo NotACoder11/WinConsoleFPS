@@ -16,10 +16,10 @@ int screenHeight = 40;
 
 int renderScreenWidth = 119; //screen width - mapwidth -1(to create emply line before map)
 
-float speed = 5;
-float sensitivity = 3;
+float speed = 1;
+float sensitivity = 1.7;
 float playerX = 1.0f;
-float playerY = 1.0f;
+float playerY = 3.0f;
 float playerLookAngle = 0.0f;
 float FOV = 1.5;
 float viewDistance = 16;
@@ -79,46 +79,6 @@ public:
        map += L"#.#.##.#.#..#...#########.#.#.####.#.##";
        map += L"#........#....#...........#........#...";
        map += L"#######################################";
-        //map += L"#######################################";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.........################............#";
-        //map += L"#.........#...........................#";
-        //map += L"#.........#...........................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#.....................................#";
-        //map += L"#######################################";
-
     }
 
     wchar_t& operator[](const int& index)
@@ -131,9 +91,11 @@ public:
 
     wstring map;
 
+    wchar_t ceilingChar = ' ';
     wchar_t wallChar = '#';
     wchar_t frame = ' ';
     wchar_t enemyChar = 'E';
+    wchar_t playerChar = 'P';
 };
 
 class Enemy
@@ -144,8 +106,8 @@ public:
         lastMovement = chrono::system_clock::now();
     }
 
-    int X = 3;
-    int Y = 3;
+    int X = 1;
+    int Y = 0;
     int speed = 1; //in seconds
 
     bool inMovement = false;
@@ -270,50 +232,33 @@ public:
 
     void look()
     {
-        
         int testY, testX;
 
         for (testX = X, testY = Y; map[(testY + 1) * map.width + testX] != map.wallChar; testY++ ) //forward 
-        {
             if (spot(testX, testY)) return;
-        }
 
         for (testX = X, testY = Y; map[(testY + 1) * map.width + testX] != map.wallChar; testY--) //backward 
-        {
             if (spot(testX, testY)) return;
-        }
 
         for (testX = X, testY = Y; map[testY * map.width + testX ] != map.wallChar; testX--) //left
-        {
             if (spot(testX, testY)) return;
-        }
 
         for (testX = X, testY = Y; map[testY * map.width + testX] != map.wallChar; testX++) //right
-        {
             if (spot(testX, testY)) return;
-        }
-        
+
         if (inMovement) //chek for additional body
         {
             for (testX = additionalX, testY = additionalY; map[(testY + 1) * map.width + testX] != map.wallChar; testY++) //forward 
-            {
                 if (spot(testX, testY)) return;
-            }
 
             for (testX = additionalX, testY = additionalY; map[(testY + 1) * map.width + testX] != map.wallChar; testY--) //backward 
-            {
                 if (spot(testX, testY)) return;
-            }
 
             for (testX = additionalX, testY = additionalY; map[testY * map.width + testX] != map.wallChar; testX--) //left
-            {
                 if (spot(testX, testY)) return;
-            }
 
             for (testX = additionalX, testY = additionalY; map[testY * map.width + testX] != map.wallChar; testX++) //right
-            {
                 if (spot(testX, testY)) return;
-            }
         }
 
     }
@@ -331,9 +276,9 @@ public:
     }
 };
 
-enum class HITTYPE
+enum class HIT_TYPE
 {
-    NOHIT,
+    HIT_NOTHING,
     HIT_WALL,
     HIT_ENEMY
 };
@@ -346,7 +291,6 @@ int main()
     SetConsoleActiveScreenBuffer(hConsoleBuff);
     DWORD dwBytesWritten = 0;
 
-
     auto tp1 = chrono::system_clock::now();
     auto tp2 = chrono::system_clock::now();
 
@@ -355,14 +299,13 @@ int main()
 
     while (true) // main game loop
     {
-        //game timer
+        //making game FPS independent
         tp2 = chrono::system_clock::now();
         chrono::duration<float> elapsedTime = tp2 - tp1;
         tp1 = tp2;
         float deltaTime = elapsedTime.count();
         
-        
-        //movement component
+        //MOVEMENT
 
         //camera 
         if (GetAsyncKeyState((unsigned short)'Q') & 0x8000)
@@ -384,18 +327,6 @@ int main()
             }
         }
 
-        if (GetAsyncKeyState((unsigned short)'A') & 0x8000) //TODO fix sidewalking 
-        {
-            playerX -= cosf(playerLookAngle) * speed * deltaTime;
-            playerY -= sinf(playerLookAngle) * speed * deltaTime;
-
-            if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)   //collision detection 
-            {
-                playerX += cosf(playerLookAngle) * speed * deltaTime;
-                playerY += sinf(playerLookAngle) * speed * deltaTime;
-            }
-        }
-
         if (GetAsyncKeyState((unsigned short)'S') & 0x8000)
         {
             playerX -= sinf(playerLookAngle) * speed * deltaTime;
@@ -408,22 +339,10 @@ int main()
             }
         }
 
-        if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
-        {
-           playerX += cosf(playerLookAngle) * speed * deltaTime;
-            playerY += sinf(playerLookAngle) * speed * deltaTime;
-
-            if (map[(int)playerY * map.width + (int)playerX] == map.wallChar)   //collision detection 
-            {
-                playerX -= cosf(playerLookAngle) * speed * deltaTime;
-                playerY -= sinf(playerLookAngle) * speed * deltaTime;
-            }
-        }
-        
         monster.move();
-        // movement end.
+        // MOVEMENT end.
 
-        for (int x = 0; x < renderScreenWidth; x++) // computation to each column
+        for (int x = 0; x < renderScreenWidth; x++) // compute for each column
         {
             float rayAngle = (playerLookAngle - FOV / 2.0f)
                 + ((float)x / (float)renderScreenWidth) * FOV;
@@ -436,7 +355,7 @@ int main()
 
             float eyeX = sinf(rayAngle);
             float eyeY = cosf(rayAngle);
-            HITTYPE hit = HITTYPE::NOHIT;
+            HIT_TYPE hit = HIT_TYPE::HIT_NOTHING;
 
 
             while (!anyHitted && distanceToWall < viewDistance)
@@ -457,7 +376,7 @@ int main()
                     if (map[testY * map.width + testX] == map.wallChar) //wall render
                     {
                         anyHitted = true;
-                        hit = HITTYPE::HIT_WALL;
+                        hit = HIT_TYPE::HIT_WALL;
 
 
                         vector<pair<float, float>> p;
@@ -480,7 +399,7 @@ int main()
                                                         return a.first < b.first;
                                                     });
                          float bound = 0.01f;
-                         if (acos(p.at(0).second) < bound ||
+                         if (acos(p.at(0).second) < bound || //looking for bounds to make them visual
                              acos(p.at(1).second) < bound )
                              boundary = true;
                     }
@@ -489,7 +408,7 @@ int main()
                         testY == monster.additionalY && testX == monster.additionalX) //enemyRender
                     {
                         anyHitted = true;
-                        hit = HITTYPE::HIT_ENEMY;
+                        hit = HIT_TYPE::HIT_ENEMY;
 
                     }
                 }
@@ -504,10 +423,10 @@ int main()
             for (int y = 0; y < screenHeight; y++)
             {
                 if (y <= ceiling)
-                    screen[y * screenWidth + x] = ' '; //draw sky
+                    screen[y * screenWidth + x] = map.ceilingChar; //draw sky
                 else if (y > ceiling && y < floor)
                 {
-                    if (hit == HITTYPE::HIT_WALL)
+                    if (hit == HIT_TYPE::HIT_WALL)
                     {
                         if (boundary)                                       texture = ' ';
                         else if (distanceToWall <= viewDistance / 4.0f)	    texture = 0x2588;	// Very close	
@@ -516,7 +435,7 @@ int main()
                         else if (distanceToWall < viewDistance)				texture = 0x2591;
                         else											    texture = ' ';		// Too far away
                     }
-                    else if (hit == HITTYPE::HIT_ENEMY)
+                    else if (hit == HIT_TYPE::HIT_ENEMY)
                     {
                         switch (rand(1, 3))
                         {
@@ -555,7 +474,7 @@ int main()
         //player info output
         swprintf_s(screen, 40, L"X=%3.2f , Y=%3.2f, A=%3.2f", playerX, playerY, playerLookAngle);
 
-        //map
+        // drawing map
         for (int tx = -1; tx < map.width; tx++)
         {
             for (int ty = 0; ty < map.height; ty++)
@@ -566,15 +485,20 @@ int main()
                     screen[(ty+1)*screenWidth + tx + 120] = map[ty * map.width + tx];
             }
         }
-
-        screen[((int)playerY +1) *  screenWidth + (int)playerX + 120] = 'P';
+        //map icons
+        screen[((int)playerY + 1) * screenWidth + (int)playerX + 120] = map.playerChar;;
         screen[((int)monster.Y + 1) * screenWidth + (int)monster.X + 120] = map.enemyChar;
-       // if(monster.inMovement)
         screen[((int)monster.additionalY + 1) * screenWidth + (int)monster.additionalX + 120] = map.enemyChar;
-
 
         screen[screenWidth * screenHeight - 1] = '\0';
         WriteConsoleOutputCharacter(hConsoleBuff, screen, screenWidth * screenHeight, { 0,0 }, &dwBytesWritten);
+
+
+        if (((int)playerX == monster.X && (int)playerY == monster.Y) ||
+            ((int)playerX == monster.additionalX && (int)playerY == monster.additionalY) ||
+            (playerX > 37 && playerY > 37) )
+            break;
     }
+
     return 0;
 }
