@@ -7,14 +7,14 @@
 #include <vector>
 #include <algorithm>
 #include <chrono>
+#include <random>
+
 using namespace std;
 
 int screenWidth = 160;
 int screenHeight = 40;
 
 int renderScreenWidth = 119; //screen width - mapwidth -1(to create frame)
-
-
 
 float speed = 5;
 float sensitivity = 3;
@@ -25,6 +25,13 @@ float FOV = 3.14159f / 4.0f;
 float viewDistance = 16;
 
 
+template<typename T>
+T rand(T min, T max)
+{
+    static std::mt19937 generator{ std::random_device()() };
+    std::uniform_int_distribution<> onRange(min, max);
+    return onRange(generator);
+}
 
 
 class Map
@@ -87,28 +94,47 @@ public:
 
     wchar_t wallChar = '#';
     wchar_t frame = ' ';
+    wchar_t enemyChar = 'E';
 };
 
 class Enemy
 {
- //TODO do something
+public:
+    Enemy()
+    {
+
+    }
+
+    float X = 3;
+    float Y = 3;
+    float speed = 0;
+
+    //TODO movement
+    //TODO AI
+    
+};
+
+enum class HITTYPE
+{
+    NOHIT,
+    HIT_WALL,
+    HIT_ENEMY
 };
 
 int main()
 {
-    Map map;
     // creating a screen buffer 
     wchar_t* screen = new wchar_t[screenWidth * screenHeight];
     HANDLE hConsoleBuff = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, 0, CONSOLE_TEXTMODE_BUFFER, 0);
     SetConsoleActiveScreenBuffer(hConsoleBuff);
     DWORD dwBytesWritten = 0;
 
-    COORD bufferSize = { screenWidth, screenHeight };
-    SetConsoleScreenBufferSize(hConsoleBuff, bufferSize);
-
 
     auto tp1 = chrono::system_clock::now();
     auto tp2 = chrono::system_clock::now();
+
+    Map map;
+    Enemy monster;
 
     while (true) // main game loop
     {
@@ -141,7 +167,7 @@ int main()
             }
         }
 
-        if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
+        if (GetAsyncKeyState((unsigned short)'A') & 0x8000) //TODO fix sidewalking 
         {
             playerX -= cosf(playerLookAngle) * speed * deltaTime;
             playerY -= sinf(playerLookAngle) * speed * deltaTime;
@@ -184,15 +210,16 @@ int main()
 
             float distanceToWall = 0.0f;
 
-            bool wallHitted = false,
+            bool anyHitted = false,
                  boundary = false;
             
 
             float eyeX = sinf(rayAngle);
             float eyeY = cosf(rayAngle);
+            HITTYPE hit = HITTYPE::NOHIT;
 
 
-            while (!wallHitted && distanceToWall < viewDistance)
+            while (!anyHitted && distanceToWall < viewDistance)
             {
                 distanceToWall += 0.1f; //making step
 
@@ -202,14 +229,16 @@ int main()
                 if (testX < 0 || testX >= map.width || //test if out of bounce 
                     testY < 0 || testY >= map.height)
                 {
-                    wallHitted = true;
+                    anyHitted = true;
                     distanceToWall = viewDistance;
                 }
                 else
                 {
-                    if (map[testY * map.width + testX] == map.wallChar)
+                    if (map[testY * map.width + testX] == map.wallChar) //wall render
                     {
-                        wallHitted = true;
+                        anyHitted = true;
+                        hit = HITTYPE::HIT_WALL;
+
 
                         vector<pair<float, float>> p;
                         for (int tx = 0; tx < 2; tx++)
@@ -235,13 +264,20 @@ int main()
                              acos(p.at(1).second) < bound )
                              boundary = true;
                     }
+
+                    if (testY == monster.Y && testX == monster.X) //enemyRender
+                    {
+                        anyHitted = true;
+                        hit = HITTYPE::HIT_ENEMY;
+
+                    }
                 }
             }
 
             int ceiling = (float)(screenHeight / 2.0) - screenHeight / ((float)distanceToWall);
             int floor = screenHeight - ceiling;
 
-            short shade = ' ';
+            short texture = ' ';
 
             
 
@@ -252,27 +288,44 @@ int main()
                     screen[y * screenWidth + x] = ' '; //draw sky
                 else if (y > ceiling && y < floor)
                 {
-                    if (boundary)                                       shade = ' ';
-                    else if (distanceToWall <= viewDistance / 4.0f)	    shade = 0x2588;	// Very close	
-                    else if (distanceToWall < viewDistance / 3.0f)		shade = 0x2593;
-                    else if (distanceToWall < viewDistance / 2.0f)		shade = 0x2592;
-                    else if (distanceToWall < viewDistance)				shade = 0x2591;
-                    else											    shade = ' ';		// Too far away
+                    if (hit == HITTYPE::HIT_WALL)
+                    {
+                        if (boundary)                                       texture = ' ';
+                        else if (distanceToWall <= viewDistance / 4.0f)	    texture = 0x2588;	// Very close	
+                        else if (distanceToWall < viewDistance / 3.0f)		texture = 0x2593;
+                        else if (distanceToWall < viewDistance / 2.0f)		texture = 0x2592;
+                        else if (distanceToWall < viewDistance)				texture = 0x2591;
+                        else											    texture = ' ';		// Too far away
+                    }
+                    else if (hit == HITTYPE::HIT_ENEMY)
+                    {
+                        switch (rand(1, 3))
+                        {
+                        case 1:
+                        case 2:
+                            texture = ' ';
+                            break;
+                        case 3:
+                            texture = 0x2127; //TODO workout propper symbol
+                            break;
+                        }
+                    }
+                    else
+                        texture = ' ';		// Too far away
 
-
-                    screen[y * screenWidth + x] = shade; // draw wall
+                    screen[y * screenWidth + x] = texture; // draw wall
 
                 }
                 else if (y >= floor)
                 {
                     float b = 1.0f - (((float)y - screenHeight / 2.0f) / ((float)screenHeight / 2.0f));
-                    if (b < 0.25)		shade = '#';
-                    else if (b < 0.5)	shade = 'x';
-                    else if (b < 0.75)	shade = '.';
-                    else if (b < 0.9)	shade = '-';
-                    else				shade = ' ';
+                    if (b < 0.25)		texture = '#';
+                    else if (b < 0.5)	texture = 'x';
+                    else if (b < 0.75)	texture = '.';
+                    else if (b < 0.9)	texture = '-';
+                    else				texture = ' ';
 
-                    screen[y * screenWidth + x] = shade; //draw floor
+                    screen[y * screenWidth + x] = texture; //draw floor
                 }
                 else
                    screen[y * screenWidth + x] = '?'; //render error
@@ -296,6 +349,7 @@ int main()
         }
 
         screen[((int)playerY +1) *  screenWidth + (int)playerX + 120] = 'P';
+        screen[((int)monster.Y + 1) * screenWidth + (int)monster.X + 120] = map.enemyChar;
 
         screen[screenWidth * screenHeight - 1] = '\0';
         WriteConsoleOutputCharacter(hConsoleBuff, screen, screenWidth * screenHeight, { 0,0 }, &dwBytesWritten);
